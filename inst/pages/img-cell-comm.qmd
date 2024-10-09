@@ -1,71 +1,172 @@
 # Cell communication
 
-Might be worth giving an example of using `reticulate/basilisk` to call a Python method here, to show interoperability is pretty straightforward (granted inputs and outputs are easily convertible).  
+## Dependencies
 
-E.g., my personal pipeline does something like this to call `COMMOT`, an optimal transport-based approach that models competition between sender and receiver signals, considers physical distances, and easily links to public databases:
+```{r deps, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(patchwork)
+library(reticulate)
+library(zellkonverter)
+library(SpatialExperiment)
+# load data from previous section
+spe <- readRDS("img-spe_cl.rds")
+```
 
-```{r eval=FALSE}
-# dependencies
-suppressPackageStartupMessages({
-    library(scater)
-    library(reticulate)
-    library(BiocParallel)
-    library(zellkonverter)
-    library(SingleCellExperiment)
-})
+Here we run `r BiocStyle::Githubpkg("zcang/COMMOT")` [@Cang2023-COMMOT], an optimal transport-based approach that models competition between sender and receiver signals, can account for multimeric interactions, considers physical cell-cell distances, and easily links to public databases providing signalling interactions and pathways. 
 
-# setup
-bp <- MulticoreParam(10)
-. <- "~/software/mambaforge/bin/conda"
+We have already set up an adequate conda environment via:
+
+```{bash conda-env, eval=FALSE}
+conda create -n commot
+conda activate commot
+pip install commot
+```
+
+For starters, we activate said environment using `r BiocStyle::Biocpkg("reticulate")`, and load the required Python modules:
+
+```{r conda-act}
+# activate conda environment
+env <- "~/software/mambaforge/bin/conda"
 options(reticulate.conda_binary=.)
 use_condaenv("commot")
-
-# loading
-sce <- readRDS(...)
-sce <- logNormCounts(sce, BPPARAM=bp)
-
-# wrangling
-xy <- spatialCoords(sce)
-reducedDim(sce, "spatial") <- xy
-
-# run 'COMMOT'
+# load dependencies
 ad <- import("anndata")
 ct <- import("commot")
 pd <- import("pandas")
+```
 
-# retrieve LR interaction from CellChatDB & filter for 
-# those that are fully covered by the 1k-plex CosMx panel
+Next, we retrieve ligand-receptor interactions from [CellChatDB](http://www.cellchat.org/) [@Jin2021-CellChat] using `COMMOT`'s `ligand_receptor_database()` function.
+This initially gives us >1,000 interactions, however, the vast majority of genes involved are missing from out data.
+Filtering for interactions whose partners are fully covered, we are left with less than a handful:
+
+```{r db}
+# retrieve LR interaction from CellChatDB &
+# filer for those fully covered by the panel
 db <- ct$pp$ligand_receptor_database(database="CellChat", species="human")
-names(db) <- c("ligand", "receptor", "pathway", "type"); nrow(db)
-db <- db[apply(db, 1, \(.) {
+names(db) <- c("ligand", "receptor", "pathway", "type")
+nrow(db)
+keep <- apply(db, 1, \(.) {
     rs <- strsplit(.["receptor"], "_")
     lr <- c(.["ligand"], unlist(rs))
-    all(lr %in% rownames(sce))
-}), ]; nrow(db)
-
-# subset to features being considered
-rs <- sapply(strsplit(db$receptor, "_"), .subset, 1)
-nrow(sce <- sce[unique(c(db$ligand, rs)), ])
-
-is <- split(colnames(sce), sce$fov)
-sr <- bplapply(is, BPPARAM=bp, \(.) { 
-    # skip FoV when there are too few cells
-    if (length(.) < 100) return(NULL) 
-    ad <- SCE2AnnData(sce[, .], X_name="logcounts")
-    ct$tl$spatial_communication(ad,
-        database_name="CellChatDB",
-        # average cell is 10x10um; here, we consider 
-        # a distance threshold of 10 cells = 0.1mm
-        dis_thr=0.1,  
-        df_ligrec=db,
-        heteromeric=TRUE,
-        pathway_sum=TRUE,
-        heteromeric_rule="min",
-        heteromeric_delimiter="_")
-    list(
-        ad$obsm["commot-CellChatDB-sum-sender"], 
-        ad$obsm["commot-CellChatDB-sum-receiver"])
+    all(lr %in% rownames(spe))
 })
+(db <- db[keep, ])
 ```
+
+Finally, we run CCC inference on our data, restricting the analysis to a 4mm$^2$ window.
+Here, `r BiocStyle::Biocpkg("zellkonverter")`'s `SCE2AnnData()` function allows us to convert our `SpatialExperiment` to an `AnnData` object in Python.
+
+::: {.callout-note title="distance threshold" collapse="true"}
+
+An important consideration is the distance threshold to impose on CCC inference (argument `dis_thr` in the code chunk below).
+Ideally, this decision is **based on a biological expectation on cell size and signalling range**.
+Previous estimates on the distance over which immune cell signaling can occur, for example, measured interactions on length scales of 80-120$\mu$m [@OylerYaniv2017].
+
+Alternatively, we can obtain a data-driven estimate by inspecting the distribution of $k$th-NN distances for a sensible $k$ that, in this context, determines the number of cells to consider as potential communication partners:
+
+```{r note-d, fig.width=4, fig.height=2.5}
+#| code-fold: true
+xy <- spatialCoords(spe)
+ns <- RANN::nn2(xy, xy, 11)
+ds <- ns$nn.dists[, 11]
+par(mar=c(4,4,2,0))
+hist(ds, n=200,
+    xlim=c(0, 60), ylim=c(0, 12e3),
+    xlab="10th-NN distance (um)", 
+    ylab="# cells", main="")
+abline(v=d <- median(ds), lw=2, col="red")
+text(d+1, 12e3, adj=c(0,1), round(d, 2), col="red")
+```
+
+:::
+
+```{r run, cache=TRUE}
+# subset data to features being considered
+rs <- sapply(strsplit(db$receptor, "_"), .subset, 1)
+rownames(sub <- spe[unique(c(db$ligand, rs)), ])
+# assign spatial coordinates to 'spatial' 
+# reduced dimension slot (required by 'COMMOT')
+xy <- spatialCoords(sub)
+reducedDim(sub, "spatial") <- xy
+# subset (4mm)x(4mm) window
+idx <-
+    xy[, 1] >= 1e3 & xy[, 1] <= 5e3 &
+    xy[, 2] >= 1e3 & xy[, 2] <= 5e3
+ncol(sub <- sub[, idx])
+# convert 'SpatialExperiment' (R) to 
+# 'AnnData' (Python) using 'zellkonverter'
+ad <- SCE2AnnData(sub, X_name="logcounts")
+# run CCC inference using 'COMMOT'
+ct$tl$spatial_communication(ad,
+    database_name="CellChatDB",
+    dis_thr=20,  
+    df_ligrec=db,
+    heteromeric=TRUE,
+    pathway_sum=TRUE,
+    heteromeric_rule="min",
+    heteromeric_delimiter="_")
+# extract list of 'data.frame's containing
+# sender & receiver signal estimates
+sr <- list(
+    s=ad$obsm["commot-CellChatDB-sum-sender"], 
+    r=ad$obsm["commot-CellChatDB-sum-receiver"])
+```
+
+At last, we can collect the resulting estimates for sender and receiver signals in a `data.frame`, together with corresponding cell metadata and gene expression values. 
+For simplicity, we pick a single interaction (CXCL12-CXCR4 signalling).
+Here, `s-` and `r-` correspond to sender and receiver signal, respectively:
+
+```{r plt-df}
+es <- as.matrix(logcounts(sub)[c("CXCL12", "CXCR4"), ])
+df <- data.frame(
+    check.names=FALSE, spatialCoords(sub), 
+    CXCL12=es[1, ], sr$s["s-CXCL12-CXCR4"], 
+    sr$r["r-CXCL12-CXCR4"], CXCR4=es[2, ])
+```
+
+As a proof of concept, let's compare gene expression values with cell-cell signalling estimates:
+
+```{r plt-es, fig.width=6, fig.height=3}
+#| code-fold: true
+ggplot(df, aes(CXCL12, `s-CXCL12-CXCR4`)) + 
+ggplot(df, aes(CXCR4, `r-CXCL12-CXCR4`)) + 
+    plot_layout(nrow=1) &
+    geom_point(shape=16, stroke=0, size=0.5) &
+    geom_abline(intercept=0, slope=1, linewidth=0.4, col="red") &
+    coord_equal() & theme_bw() & theme(panel.grid.minor=element_blank())
+```
+
+We can observe that x- and y-values are similar for only a subset of cells.
+A portion of cells expresses CXCL12/CXCR4, but takes on 0 signalling values.
+In between, signalling estimates fall below the corresponding expression values.
+
+This makes a lot of sense given that `COMMOT` considers physical cell-cell distances.
+I.e., some cells express CXCL12/CXCR4, but are too distant from cells expressing CXCR4/CXCL12, and are thus deemed to *not* be involved in signalling.
+Meanwhile, there is a penalty on signalling in proportion to the distance between sender and receiver cells, as well as competition between proximal cells, yielding non-zero but lower-than-expression values.
+
+Visualizing the above data in the tissue, we can observe that expression and signalling values give similar spatial patterns, but the latter are restricted to where CXCL12- and CXCR4-expressing cells co-localize:
+
+```{r plt-xy, fig.width=10, fig.height=3}
+#| code-fold: true
+fd <- df |>
+    pivot_longer(matches("CXC(L|R)")) |> arrange(value) |>
+    mutate(name=factor(name, grep("CXC(L|R)", names(df), value=TRUE)))
+ggplot(fd, aes(x_centroid, y_centroid, col=value)) + 
+    geom_point(shape=16, stroke=0, size=0.4) +
+    scale_color_viridis_c(NULL, option="C") +
+    coord_equal(expand=FALSE) + 
+    facet_wrap(~name, nrow=1) + 
+    theme_void() + theme(
+        plot.margin=margin(l=5),
+        legend.position="bottom",
+        legend.key.width=unit(1, "lines"),
+        legend.key.height=unit(0.5, "lines"),
+        panel.background=element_rect(fill="black", color="white"))
+```
+
+On a final note, inference is arguably much more complex (and results less straightforward to interpret) when a higher-plex panel is being considered; i.e., when overlapping and multimeric interactions are involved, which did not apply in the example provided here.
+Nevertheless, we hope that readers can appreciate the conceptual difference between expression data and CCC results, and will be able to implement similar `reticulate` approaches to incorporate methods living in Python into their analysis pipelines.
 
 ## References {.unnumbered}
