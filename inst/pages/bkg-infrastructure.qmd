@@ -1,0 +1,97 @@
+# Infrastructure {#sec-bkg-infrastructure}
+
+## Introduction
+
+Bioconductor provides several data classes for storing and manipulating spatial (transcript)omics datasets. 
+By relying on these consistent data structures, we can easily connect methods and packages developed by different research groups to build analysis workflows that include the latest state-of-the-art methods.
+
+<!--
+Many of the analysis steps typically performed for single-cell data are – directly or with alterations – applicable to and of potential interest for SO data. 
+However, while SO and single-cell data structures share similarities, there’s a need to accommodate specialized information such as spatial coordinates (of observations and/or molecules) and image-related metadata. 
+Thus, a container for SO data that extends (or 'inherits from') existing Bioc classes for single-cell data analysis is beneficial in that it can inter-operate with existing infrastructure, and allow technology-specific flexibility in future class and tool development.
+-->
+
+Below, we describe the Bioconductor data classes used in this book.
+
+## File formats
+
+Spatial (transcript)omics assays and the data acquired through them are divers.
+In addition, different vendors provide different file formats upon data distributions.
+Here, we give an overview of frequently encountered file formats, and their handling in R.
+
+### count data
+
+Data from sequencing-based assays typically include (cell) barcodes and metadata, and a matrix where rows/columns correspond to features/observations.
+These are typically provided as a set of *.csv* and *.mtx* files, or compressed versions thereof (e.g., *.gz*).
+For data from 10x Genomics, count data can be read into R using `r BiocStyle::Biocpkg("DropletUtils")`'s `read10xCounts()` function; data from other provides should be realizable using standard R readers.
+For large-scale datasets (say, 100,000s of cells), *.h5* files allow for out-of-memory representation of count matrices, represented as `r BiocStyle::Biocpkg("DelayedArray")`s in R.
+
+### *.parquet*
+
+Tabular data (e.g., segmentation boundaries, molecule locations) may arrive in the form of *.parquet* files.
+These may be interfaced with using `r BiocStyle::Biocpkg("arrow")`.
+Notably, `arrow`'s `read_parquet()` functions allows for delayed `r BiocStyle::CRANpkg("dplyr")`-style operations, such as `filter()` and `select()`, allowing to query the data in a delayed fashion in order to, e.g., realize only relevant parts of into memory.
+
+### *.zarr*
+
+*.zarr* stores can be used to store N-dimensional arrays as a grid of "chunks", enabling parallelizable accession.
+For (bio)imaging data, different image scales (or resolutions) can be stored as different layers of a "pyramid", where the base/tip represents the full/lowest resolution.
+R-interfaces to *.zarr* are provided through `r BiocStyle::Biocpkg("Rarr")` (Bioc) and `r BiocStyle::CRANpkg("pizarr")` (CRAN).
+
+## Data classes
+
+In seq-ST data, measurements come in the form of a transcripts by spots count matrix, where each spot is additionally associated with spatial coordinates.
+
+As opposed to this, img-ST technologies yield molecule-level data that are typically provided as long-format tables where each row corresponds to an observation, and columns contain information about transcript identity, spatial location, and experimental metadata (e.g., sample of origin). 
+Upon segmentation of cell boundaries and subsequent transcript-to-cell mapping, these data can be reshaped into a transcripts by cells count matrix that is analogous to data from single-cell omics technologies. 
+
+For both types of data, observations are associated with additional metadata such as area size of spots or of segmented cells and, for the latter, centroid locations and polygonal boundaries from segmentation.
+
+### `SingleCellExperiment`
+
+scRNA-seq and analogous technologies quantify transcripts at single-cell resolution, yielding a transcripts by cells count matrix.
+In Bioconductor, the primary class for data from single-cell experiments in the `r BiocStyle::Biocpkg("SingleCellExperiment")` [@Amezquita2020] (SCE).
+
+The SCE extends the `r BiocStyle::Biocpkg("SummarizedExperiment")` (SE) class by a series of features specific to single-cell data.
+For instance, `reducedDims` for low-dimensional embeddings of observations like PCA, t-SNE, and UMAP; `row`- and `colPairs` for relationships between genes (e.g., gene-to-gene correlations) and cells (e.g., cell-to-cell distances), respectively; and, data on alternative features from the same cells, such as those obtained via multi-modal assays, are stored as `altExps` (for 'alternative experiments').
+
+### `SpatialExperiment`
+
+`r BiocStyle::Biocpkg("SpatialExperiment")` (SPE) [@Righelli2022] is the core data class used in this book. 
+This class allows us to store datasets at the spot or cell level, i.e. data from sequencing-based platforms at the spot level, or data from imaging-based platforms aggregated to the cell level.
+
+SPE extends SCE with additional customizations to store spatial information, such as spatial coordinates and image files.
+A summary of the `SpatialExperiment` object structure is shown in the Figure \@ref(fig:spe). 
+Briefly, a SPE object consists of (i) `assays` containing expression counts, (ii) `rowData` containing information on features, i.e. genes, (iii) `colData` containing information on spots or cells, including non-spatial and spatial metadata, (iv) `spatialCoords` containing spatial coordinates, and (v) `imgData` containing image data. 
+For spot-based data, a single `assay` named `counts` is used.
+
+```{r spe, echo = FALSE, out.width = "100%", fig.cap = "Overview of the `SpatialExperiment` data class for storing and manipulating spatial transcriptomics datasets within the Bioconductor framework."}
+knitr::include_graphics("../images/SpatialExperiment.png")
+```
+
+### `SpatialFeatureExperiment`
+
+SPE has been extended through `r BiocStyle::Biocpkg("SpatialFeatureExperiment")` (SFE) [@Moses2023-Voyager], which can additionally accommodate observation- and feature-level graphs (e.g., of cell/spot neighborhoods) and geometries (e.g., segmentation and tissue boundaries, or histological regions annotated by a pathologist).
+Because these are represented as `r BiocStyle::CRANpkg("sf")` (geometries) and `r BiocStyle::CRANpkg("spdep")` (graphs) objects, SFE directly gives access to a range of geometry operations (e.g., intersecting and buffering) and spatial dependency calculations (e.g., Moran's I and Geary's C).
+
+### `MoleculeExperiment`
+
+`r BiocStyle::Biocpkg("MoleculeExperiment")` (ME) [@PetersCouto2023] is designed to imaging-based spatial transcriptomics data.
+For each sample, ME stores a list of `molecules` (e.g., transcript identities and coordinates), and `boundaries` (e.g., cell identities and polygon coordinates).
+The latter can, in principle, contain alternative segmentations that may stem from, e.g., cell membrane, body, or nucleus stainings.
+In this way, different count matrices may be obtained by allocating molecules to a given set of boundaries.
+Analyses at the aggregated cell level may, in turn, be carried out using an ME-derived SPE (the ME package provides a wrapper for this).
+
+### Other frameworks
+
+`r BiocStyle::Githubpkg("satijalab/seurat")` and `scanpy` [@Wolf2018-scanpy] provide purportedly comprehensive single-cell analysis pipelines in R and Python, respectively.
+Similarly, `r BiocStyle::Githubpkg("drieslab/Giotto")` [@Chen2023-Giotto] and `squidpy` [@Palla2022-squidpy] provide all-in-one frameworks for analyzing spatial omics data.
+
+The [`SpatialData`](https://spatialdata.scverse.org) [@Marconato2025-SpatialData] framework offers a suit of modules for loading, handling, as well as (static and interactive) visualization of divers spatial omics data (spanning imaging- and sequencing based data and different modalities).
+In essence, the container relies on 5 types of elements (images, labels, shapes, points, tables), which are represented on-disk using standardizes, OME-NGFF compliant file formats (*.zarr* for images, labels, and tables; *.parquet* for shapes and polygons), enabling unified and memory-efficient data representation and handling.
+
+```{r spd, echo = FALSE, out.width = "100%", fig.cap = "Overview of the scverse/Python `SpatialData` framework."}
+knitr::include_graphics("../images/SpatialData.png")
+```
+
+## References {.unnumbered}

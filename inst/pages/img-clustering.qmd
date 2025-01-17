@@ -38,8 +38,6 @@ spe <- logNormCounts(spe)
 
 - `r BiocStyle::Biocpkg("SpatialPCA")`
 
-- `r BiocStyle::Biocpkg("InSituType")` [@Danaher2022-InSituType] has been developed for CosMx data, specifically. It relies on a probabilistic model, can incorporate non-transcriptional information (e.g., immunofluorescence, cell area and aspect ratio), and can be run in an un-, semi- or fully supervised setting (based on bulk references profiles for the latter two). Some profiles are available through `r BiocStyle::Biocpkg("SpatialDecon")` [@Danaher2022-SpatialDecon], but these may be acquired from custom reference data, e.g., from matching scRNA-seq data or snPATHO-seq data on adjacent sections).
-
 ### Spatially aware
 
 `r BiocStyle::Biocpkg("BANKSY")` [@Singhal2024-BANKSY] essentially computes PCs that are weighted by embeds cells in a product space of their own and the local neighborhood transcriptome, representing cell state and microenvironment.
@@ -140,6 +138,52 @@ ggplot(fd, aes(x_centroid, y_centroid, col=KRT14)) +
     geom_point(shape=16, stroke=0, size=0.2) +
     scale_color_gradientn(colors=c("navy", "red", "gold", "ivory")) +
     theme_xy + theme(legend.key.height=unit(1, "lines"))
+```
+
+## Transfer
+
+`r BiocStyle::Biocpkg("InSituType")` [@Danaher2022-InSituType] has been developed for CosMx data, specifically, but should be applicable to other types of imaging-based ST data.
+It relies on a probabilistic model, can incorporate non-transcriptional information (e.g., immunofluorescence, cell area and aspect ratio), and can be run in an un-, semi- or fully supervised setting (based on bulk references profiles for the latter two).
+
+Reference profiles may be acquired from custom reference data, e.g., from matching scRNA-seq data, or snPATHO-seq data on adjacent sections.
+Some profiles are available through `r BiocStyle::Biocpkg("SpatialDecon")` [@Danaher2022-SpatialDecon].
+
+```{r SpatialDecon, eval=FALSE}
+library(SpatialDecon)
+ref <- download_profile_matrix(
+    species="Human", 
+    age_group="Adult", 
+    matrixname="ImmuneTumor_safeTME")
+ref[1:5, 1:5]
+colnames(ref)
+```
+
+```{r InSituType, message=FALSE, eval=FALSE}
+library(InSituType)
+library(STexampleData)
+spe <- CosMx_lungCancer()
+# cohorting based on IF data
+j <- names(cd <- colData(spe))
+i <- grep("^Mean", j, value=TRUE)
+i <- setdiff(i, "Mean.G")
+i <- c("Area", "AspectRatio", i)
+coh <- fastCohorting(as.matrix(cd[i]))
+# estimate per-cell background
+rna <- spe$nCount_RNA
+neg <- spe$nCount_negprobes/20
+bkg <- rna*mean(neg)/mean(rna) 
+# updating reference profiles 
+# to account for platform effects
+ref <- updateReferenceProfiles(
+    reference_profiles=pbs, reference_sds=NULL, 
+    counts=mtx, neg=neg, bg=bkg)$updated_profiles
+# run 'InSituType' clustering
+# in fully supervised mode
+ist <- insitutype(mtx, 
+    reference_profiles=ref, 
+    update_reference_profiles=FALSE,
+    neg=neg, cohort=coh, n_clusts=0)
+table(ist$clust)
 ```
 
 ## Reduction
