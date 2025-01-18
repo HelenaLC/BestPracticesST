@@ -4,7 +4,7 @@
 
 The following chapters provide examples demonstrating methods for individual analysis steps for spatial transcriptomics data from sequencing-based platforms.
 
-In these chapters, we assume the datasets are formatted as `SpatialExperiment` objects (see @sec-bkg-bioconductor-data-classes).
+In these chapters, we assume the datasets are formatted as `SpatialExperiment` objects (see @sec-bkg-infrastructure).
 
 Here, we load a 10x Genomics Visium dataset that will be used in several of the following chapters. This dataset has previously been preprocessed using data preprocessing procedures with tools outside R and saved in `SpatialExperiment` format. (For more details on data preprocessing procedures for the Visium platform, see the related online book [Visium Data Preprocessing](https://lmweber.org/Visium-data-preprocessing/), also listed in @sec-apx-related-resources-data-preprocessing.) This dataset is available for download in `SpatialExperiment` format from the [STexampleData](https://bioconductor.org/packages/STexampleData) Bioconductor package.
 
@@ -47,7 +47,7 @@ saveRDS(spe, file = "seq-spe_load.rds")
 
 ## SpatialExperiment object
 
-Check the structure of the `SpatialExperiment` object. For more details on the `SpatialExperiment` structure, see @sec-bkg-bioconductor-data-classes.
+Check the structure of the `SpatialExperiment` object. For more details on the `SpatialExperiment` structure, see @sec-bkg-infrastructure.
 
 ```{r}
 # check object
