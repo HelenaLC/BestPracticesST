@@ -1,65 +1,60 @@
 # Marker genes {#sec-seq-marker-genes}
 
-## Introduction
+## Preamble
+
+### Introduction
 
 In this chapter, we perform differential expression testing between clusters or spatial domains to identify representative marker genes for each cluster or spatial domain.
 
+### Dependencies
 
-## Load previously saved data
+We start by loading the previously saved data object(s) (see @sec-seq-clustering-save-objects), as well as require packages:
 
-We start by loading the previously saved data object(s) (see @sec-seq-clustering-save-objects).
-
-```{r, message=FALSE, results='hide'}
+```{r deps, message=FALSE, warning=FALSE}
+library(scran)
+library(scater)
+library(pheatmap)
 library(SpatialExperiment)
 spe <- readRDS("seq-spe_clustering.rds")
 ```
 
-
-## Differential expression testing
+## DGE analysis
 
 Identify representative marker genes for each cluster or spatial domain by testing for differential gene expression between clusters.
 
-Here, we use the `findMarkers` implementation in `scran` [@Lun2016], using a binomial test, which tests for genes that differ in the proportion expressed vs. not expressed between clusters. This is a more stringent test than the default t-tests, and tends to select genes that are easier to interpret and validate experimentally.
+Here, we use the `findMarkers` implementation in `r BiocStyle::Biocpkg("scran")` [@Lun2016], using a binomial test, which tests for genes that differ in the proportion expressed vs. not expressed between clusters. This is a more stringent test than the default t-tests, and tends to select genes that are easier to interpret and validate experimentally.
 
-```{r, message=FALSE}
-library(scran)
-library(scater)
-library(pheatmap)
-```
-
-```{r}
-# set gene names as row names for easier plotting
+```{r mgs}
+# set gene names as row names to make 
+# visualizations more interpretable
 rownames(spe) <- rowData(spe)$gene_name
-
-# test for marker genes
-markers <- findMarkers(spe, test = "binom", direction = "up")
-
-# returns a list with one DataFrame per cluster
-markers
+# set 'BayesSpace' clusters as 'colLabels'; unless 
+# specified otherwise, these will be used by default
+colLabels(spe) <- spe$BayesSpace
+# test for marker genes; this returns a 
+# list with one 'DataFrame' per cluster
+(mgs <- findMarkers(spe, test="binom", direction="up"))
 ```
 
-```{r, fig.width=5, fig.height=6}
+```{r plt-mgs-hm, fig.width=5, fig.height=6}
 # plot log-fold changes for one cluster over all other clusters
 # selecting cluster 1
-interesting <- markers[[1]]
-best_set <- interesting[interesting$Top <= 5, ]
-logFCs <- getMarkerEffects(best_set)
-
-pheatmap(logFCs, breaks = seq(-5, 5, length.out = 101))
+df <- mgs[[1]]
+fd <- df[df$Top <= 5, ]
+logFCs <- getMarkerEffects(fd)
+pheatmap(logFCs, breaks=seq(-5, 5, length.out=101))
 ```
 
-```{r, fig.width=7, fig.height=7}
-# plot log-transformed normalized expression of top genes for one cluster
-top_genes <- head(rownames(interesting))
-
-plotExpression(spe, x = "label", features = top_genes)
+```{r fig.width=7, fig.height=7}
+# plot log-transformed normalized expression 
+# of top genes for one cluster
+top <- head(rownames(fd))
+plotExpression(spe, x="label", features=top)
 ```
-
 
 ## Pseudobulking
 
 Alternatively, we can proceed by manually aggregating the counts per cluster or spatial domain, which is referred to as "pseudobulking". Then, we can perform differential expression testing between the pseudobulked clusters or spatial domains.
-
 
 ## Multiple samples
 
@@ -69,5 +64,6 @@ Datasets consisting of multiple samples from one or more biological conditions a
 
 These datasets require additional analysis methods that can make full use of the information contained in multiple samples in a computationally efficient and statistically rigorous manner.
 
+## Appendix
 
-## References {.unnumbered}
+### References {.unnumbered}
