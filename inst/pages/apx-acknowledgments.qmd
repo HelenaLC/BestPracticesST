@@ -9,7 +9,6 @@ The main developers of this book are:
 - [Leonardo Collado-Torres](https://lcolladotor.github.io/), Lieber Institute for Brain Development, Baltimore, USA
 - [Stephanie C. Hicks](https://www.stephaniehicks.com/), Johns Hopkins University, Baltimore, USA
 
-
 ## Feedback and contributions
 
 We are grateful for feedback, suggestions, and contributions from readers in the research community. These may be provided as [GitHub](https://github.com/lmweber/PrinciplesSTA) issues (see @sec-bkg-introduction-feedback).
