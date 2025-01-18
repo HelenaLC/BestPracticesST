@@ -104,13 +104,19 @@ max(rowSums(ns$nn.idx > 0)) < k
 
 ## Spatial contexts
 
+```{r aes}
+# aesthetics
+pal_k <- brewer.pal(nlevels(df$k), "Paired")
+pal_c <- c("blue", "cyan", "gold", "magenta", "maroon")
+```
+
 Spatial niche analysis aims at identifying regions of homogeneous composition by grouping cells based on their microenvironment.
 To this end, methods such as `r BiocStyle::Biocpkg("imcRtools")` [@Windhager2023-imcRtools] rely on a $k$-nearest-neighbor ($k$NN) graph (based on Euclidean cell-to-cell distances), and clustering cells using common clustering algorithms (according to their neighborhood's subpopulation frequencies).
 
 Here, we demonstrate how to identify spatial contexts based on $k$-means clustering on cluster frequencies among (Euclidean) $k$NNs.
 We recommend readers consult `imcRtools`' documentation for a much wider range of visualizations and downstream analyses in this context.
 
-```{r imcRtools-calc, message=FALSE}
+```{r imcRtools-calc, message=FALSE, eval=FALSE}
 library(imcRtools)
 # construct kNN-graph based on Euclidean distances
 sqe <- buildSpatialGraph(spe, 
@@ -129,17 +135,15 @@ table(sqe$ctx <- factor(ctx$cluster))
 
 Let's quickly view the subpopulation composition of each spatial context:
 
-```{r imcRtools-show}
+```{r imcRtools-show, eval=FALSE}
 df <- data.frame(spatialCoords(sqe), colData(sqe))
 round(100*with(df, prop.table(table(k, ctx), 2)), 2)
 ```
 
 Secondly, let's visualize the obtained spatial contexts in space:
 
-```{r imcRtools-plot, fig.width=9, fig.height=3, fig.cap="Tissue plot with cells colored by cluster (left) and spatial context (right) based on $k$-means clustering of cluster frequencies among each cell's (Euclidean) $k$NNs."}
+```{r imcRtools-plot, fig.width=9, fig.height=3, fig.cap="Tissue plot with cells colored by cluster (left) and spatial context (right) based on $k$-means clustering of cluster frequencies among each cell's (Euclidean) $k$NNs.", eval=FALSE}
 #| code-fold: true
-pal_k <- brewer.pal(nlevels(df$k), "Paired")
-pal_c <- c("blue", "cyan", "gold", "magenta", "maroon")
 ggplot(df, aes(x_centroid, y_centroid, col=k)) + 
     scale_color_manual(values=pal_k) +
 ggplot(df, aes(x_centroid, y_centroid, col=ctx)) + 

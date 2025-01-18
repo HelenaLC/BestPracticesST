@@ -42,7 +42,6 @@ Imports:
     ggspavis, 
     hoodscanR,
     igraph, 
-    imcRtools, 
     lobstr,
     nnSVG, 
     openxlsx,
