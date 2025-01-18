@@ -6,6 +6,8 @@ on:
       - devel
       - sandbox
       - RELEASE_**
+  pull_request:
+      - sandbox
 
 env:
   ver: devel
