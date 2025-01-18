@@ -179,11 +179,9 @@ Alternatively, run [nnSVG](https://bioconductor.org/packages/nnSVG) [@Weber2023]
 
 Here, we run nnSVG using a small subset of the dataset for faster runtime. We select a subset of the data by subsampling on the set of spots and including stringent filtering for low-expressed genes. For a full analysis, we recommend running `nnSVG` on all spots and using default filtering parameters (for Visium data from human brain tissue), which takes around 45 minutes for one Visium slide on a standard laptop using multiple cores.
 
-```{r, message=FALSE}
+```{r, eval=FALSE}
 library(nnSVG)
-```
 
-```{r}
 # subsample spots
 n <- 100
 set.seed(123)

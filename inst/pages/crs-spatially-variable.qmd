@@ -56,7 +56,7 @@ dim(spe)
 
 In this example, we run nnSVG using a small subset of the dataset for faster runtime. We select a subset by subsampling on the set of spots and including stringent filtering for low-expressed genes. A full analysis using all spots for this dataset and default filtering parameters for Visium data from human brain tissue takes around 45 minutes for one Visium sample on a standard laptop.
 
-```{r}
+```{r nnSVG, eval=FALSE}
 # subsample spots for faster runtime in this example
 # note: skip this step in full analysis
 n <- 100
@@ -73,15 +73,11 @@ spe_nnSVG <- filter_genes(
 
 # re-calculate logcounts after filtering
 spe_nnSVG <- logNormCounts(spe_nnSVG)
-```
 
-```{r}
 # run nnSVG
 set.seed(123)
 spe_nnSVG <- nnSVG(spe_nnSVG)
-```
 
-```{r}
 # investigate results
 
 # show results
