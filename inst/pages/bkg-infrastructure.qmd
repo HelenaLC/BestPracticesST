@@ -66,7 +66,7 @@ Briefly, a SPE object consists of (i) `assays` containing expression counts, (ii
 For spot-based data, a single `assay` named `counts` is used.
 
 ```{r fig-spe, echo = FALSE, out.width = "80%", fig.cap = "Overview of the `SpatialExperiment` data class for storing and manipulating spatial transcriptomics datasets within the Bioconductor framework."}
-knitr::include_graphics("../images/SpatialExperiment.png")
+knitr::include_graphics("images/SpatialExperiment.png")
 ```
 
 ### `SpatialFeatureExperiment`
@@ -100,7 +100,7 @@ The [`SpatialData`](https://spatialdata.scverse.org) [@Marconato2025-SpatialData
 In essence, the container relies on 5 types of elements (images, labels, shapes, points, tables), which are represented on-disk using standardizes, OME-NGFF compliant file formats (*.zarr* for images, labels, and tables; *.parquet* for shapes and polygons), enabling unified and memory-efficient data representation and handling.
 
 ```{r fig-spd, echo = FALSE, out.width = "80%", fig.cap = "Overview of the scverse/Python `SpatialData` framework."}
-knitr::include_graphics("../images/SpatialData.png")
+knitr::include_graphics("images/SpatialData.png")
 ```
 
 ## References {.unnumbered}

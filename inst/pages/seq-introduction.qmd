@@ -23,7 +23,7 @@ Histology images generated from hematoxylin and eosin (H&E) staining can be used
 An earlier version of the platform was developed by @Stahl2016, which was subsequently improved and commercialized as the 10x Genomics Visium platform.
 
 ```{r, echo = FALSE, out.width = "75%", fig.cap = "Schematic illustrating the 10x Genomics Visium platform. Source: [10x Genomics Visium](https://www.10xgenomics.com/spatial-transcriptomics/)"}
-knitr::include_graphics("../images/Visium.png")
+knitr::include_graphics("images/Visium.png")
 ```
 
 
