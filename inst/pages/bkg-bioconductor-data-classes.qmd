@@ -18,7 +18,7 @@ A summary of the `SpatialExperiment` object structure is shown in the following 
 For more details, see the `SpatialExperiment` package [Bioconductor vignette](https://bioconductor.org/packages/release/bioc/vignettes/SpatialExperiment/inst/doc/SpatialExperiment.html) or the paper describing the class [@Righelli2022].
 
 ```{r, echo = FALSE, out.width = "100%", fig.cap = "Overview of the `SpatialExperiment` data class for storing and manipulating spatial transcriptomics datasets within the Bioconductor framework."}
-knitr::include_graphics("images/SpatialExperiment.png")
+knitr::include_graphics("../images/SpatialExperiment.png")
 ```
 
 
