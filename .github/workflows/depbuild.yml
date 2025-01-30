@@ -33,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.owner }}/deps
+          images: ghcr.io/${{ github.repository_owner }}/deps
           tags: |
             ${{ github.ref_name }}
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'devel') }}
