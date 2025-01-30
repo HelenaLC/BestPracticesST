@@ -1,6 +1,7 @@
 name: biocbook
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - devel
