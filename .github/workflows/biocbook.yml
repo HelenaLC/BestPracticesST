@@ -22,6 +22,17 @@ jobs:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
+      - name: 🏷 Set Bioc version
+        run: |
+          branch="${{ github.ref_name }}"
+          if [[ "$branch" == "devel" || "$branch" =~ ^RELEASE_ ]]; then
+            # Remove everything after and including '-' if present
+            version=${branch%%-*}
+            echo "BIOC_VERSION=${version}" >> "${GITHUB_ENV}"
+          else
+            echo "BIOC_VERSION=devel" >> "${GITHUB_ENV}"
+          fi
+
       - name: ⏳ Collect Workflow Telemetry
         uses: catchpoint/workflow-telemetry-action@v2
 
@@ -70,7 +81,7 @@ jobs:
           load: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BIOC_VERSION=${{ github.ref_name }}
+            BIOC_VERSION=${{ env.BIOC_VERSION }}
             OWNER=${{ env.owner }}
 
       - name: 🚀 Push local Docker image to ghcr.io
@@ -80,7 +91,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BIOC_VERSION=${{ github.ref_name }}
+            BIOC_VERSION=${{ env.BIOC_VERSION }}
 
       - name: 📚 Recover pkg artifacts generated during build in local Docker container (pkg bundle and book) 
         env:
