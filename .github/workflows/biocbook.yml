@@ -10,6 +10,9 @@ on:
       - sandbox
     paths-ignore:
       - 'deps.Dockerfile'
+  pull_request:
+    paths-ignore:
+      - 'deps.Dockerfile'
 
 jobs:
   build:
