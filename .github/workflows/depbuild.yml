@@ -11,6 +11,9 @@ on:
     paths:
       - 'DESCRIPTION'
       - 'deps.Dockerfile'
+  pull_request:
+    paths-ignore:
+      - 'deps.Dockerfile'
 
 jobs:
   build-push:
