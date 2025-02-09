@@ -12,7 +12,8 @@ on:
       - 'DESCRIPTION'
       - 'deps.Dockerfile'
   pull_request:
-    paths-ignore:
+    paths:
+      - 'DESCRIPTION'
       - 'deps.Dockerfile'
 
 jobs:
