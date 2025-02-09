@@ -10,7 +10,7 @@ on:
       - sandbox
     paths-ignore:
       - 'deps.Dockerfile'
-  pull-request:
+  pull_request:
     branches:
       - sandbox
     paths-ignore:
