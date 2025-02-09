@@ -12,6 +12,8 @@ on:
       - 'DESCRIPTION'
       - 'deps.Dockerfile'
   pull_request:
+    branches:
+      - sandbox
     paths:
       - 'DESCRIPTION'
       - 'deps.Dockerfile'

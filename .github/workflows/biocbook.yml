@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - 'deps.Dockerfile'
   pull_request:
+    branches:
+      - sandbox
     paths-ignore:
       - 'deps.Dockerfile'
 
