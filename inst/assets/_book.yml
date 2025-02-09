@@ -3,49 +3,49 @@ book:
   chapters:
     - index.qmd
     - pages/preamble.qmd
-    - part: "Introduction"
-      chapters:
-        - pages/bkg-introduction.qmd
-        - pages/bkg-spatial-omics.qmd
-        - pages/bkg-interoperability.qmd
-        - pages/bkg-data-infrastructure.qmd
-        #- pages/bkg-datasets.qmd
-    - part: "Sequencing-based platforms"
-      chapters:
-        - pages/seq-introduction.qmd
-        - pages/seq-data-import-structure.qmd
-        - pages/seq-quality-control.qmd
-        - pages/seq-norm-feat-dimred.qmd
-        - pages/seq-clustering.qmd
-        - pages/seq-marker-genes.qmd
-        - pages/seq-deconvolution.qmd
-        - pages/seq-spatial-co-localization.qmd
-        - pages/seq-workflow-dlpfc.qmd
-        - pages/seq-workflow-visium-crc.qmd
-        - pages/seq-workflow-spatialibd.qmd
+    # - part: "Introduction"
+    #   chapters:
+    #     - pages/bkg-introduction.qmd
+    #     - pages/bkg-spatial-omics.qmd
+    #     - pages/bkg-interoperability.qmd
+    #     - pages/bkg-data-infrastructure.qmd
+    #     #- pages/bkg-datasets.qmd
+    # - part: "Sequencing-based platforms"
+    #   chapters:
+    #     - pages/seq-introduction.qmd
+    #     - pages/seq-data-import-structure.qmd
+    #     - pages/seq-quality-control.qmd
+    #     - pages/seq-norm-feat-dimred.qmd
+    #     - pages/seq-clustering.qmd
+    #     - pages/seq-marker-genes.qmd
+    #     - pages/seq-deconvolution.qmd
+    #     - pages/seq-spatial-co-localization.qmd
+    #     - pages/seq-workflow-dlpfc.qmd
+    #     - pages/seq-workflow-visium-crc.qmd
+    #     - pages/seq-workflow-spatialibd.qmd
     - part: "Imaging-based platforms"
       chapters:
         - pages/img-introduction.qmd
         - pages/img-quality-control.qmd
         - pages/img-dimensionality-reduction.qmd
         - pages/img-clustering.qmd
-        - pages/img-neighbors.qmd
+        # - pages/img-neighbors.qmd
         - pages/img-cell-comm.qmd
-        - pages/img-sub-cellular.qmd
-        - pages/img-workflow-xenium.qmd
-        - pages/img-workflow-cosmx.qmd
-    - part: "Technology-agnostic/cross-platform/downstream analyses"
-      chapters:
-        - pages/crs-introduction.qmd
-        - pages/crs-spatially-variable.qmd
-        - pages/crs-signatures.qmd
-        - pages/crs-spat-stat.qmd
-        - pages/crs-registration.qmd
-        - pages/crs-multi-sample.qmd
-        - pages/crs-workflow-xenvis.qmd
-  appendices:
-    - pages/apx-acknowledgments.qmd
-    - pages/apx-related-resources.qmd
+  #       - pages/img-sub-cellular.qmd
+  #       - pages/img-workflow-xenium.qmd
+  #       - pages/img-workflow-cosmx.qmd
+  #   - part: "Technology-agnostic/cross-platform/downstream analyses"
+  #     chapters:
+  #       - pages/crs-introduction.qmd
+  #       - pages/crs-spatially-variable.qmd
+  #       - pages/crs-signatures.qmd
+  #       - pages/crs-spat-stat.qmd
+  #       - pages/crs-registration.qmd
+  #       - pages/crs-multi-sample.qmd
+  #       - pages/crs-workflow-xenvis.qmd
+  # appendices:
+  #   - pages/apx-acknowledgments.qmd
+  #   - pages/apx-related-resources.qmd
   cover-image: assets/cover.png
   favicon: assets/favicon.png
   sidebar: 
