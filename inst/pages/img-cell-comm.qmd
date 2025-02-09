@@ -1,71 +1,253 @@
-# Cell communication
+# Cell communication {#sec-img-cell-comm}
 
-Might be worth giving an example of using `reticulate/basilisk` to call a Python method here, to show interoperability is pretty straightforward (granted inputs and outputs are easily convertible).  
+```{r include=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
 
-E.g., my personal pipeline does something like this to call `COMMOT`, an optimal transport-based approach that models competition between sender and receiver signals, considers physical distances, and easily links to public databases:
+## Preamble
 
-```{r eval=FALSE}
-# dependencies
-suppressPackageStartupMessages({
-    library(scater)
-    library(reticulate)
-    library(BiocParallel)
-    library(zellkonverter)
-    library(SingleCellExperiment)
+### Introduction
+
+Having identified spatial patterns in cellular organization and gene expression, it is further of interest to characterize how cells coordinate activity through i) their (physical) community context, or cell-cell *interactions* (CCI); and, ii) protein-mediated signaling, or cell-cell *communication* (CCC).
+
+The mechanisms underlying cellular interaction and communication have been classified as *autocrine, juxtacrine, paracrine, and endocrine* to refer to *intra-cellular, contact-dependent, close- and long-range* signaling events, respectively [@Armingol2020]. 
+For example, paracrine events depend on diffusion of signaling molecules between proximal cells, whereas endocrine events are mediated by molecules (typically hormones) that travel between distal cells through extracellular fluids.
+
+In scRNA-seq data, CCI/C is commonly studied through ligand-receptor (LR) pairs, but corresponding tools are restricted to gene expression only; e.g., `r BiocStyle::Githubpkg("ventolab/CellphoneDB")` [@Efremova2020-CellPhoneDB]. 
+However, incorporating spatial information should enrich this type of analysis because physical cell-to-cell distances play a key role in inter-cellular signaling. 
+
+Methods developed for CCI/C analysis of spatial (transcript)omics data consider cellular distances to adjust interactions predicted from expression, and typically aim at quantifying spatial co-expression of LRs (that is, between proximal cells). Such analyses need not be limited to LRs, however.
+
+### Dependencies
+
+```{r deps, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggspavis)
+library(basilisk)
+library(patchwork)
+library(reticulate)
+library(zellkonverter)
+library(SpatialExperiment)
+# load data from previous chapter
+# (past quality control & clustered)
+spe <- readRDS("img-spe_cl.rds")
+```
+
+## Analysis
+
+### Non-spatial
+
+In principle, and CCC tool may be turned into a spatial one by:
+
+1. **pre-filtering:** select a spatial neighborhood,  
+and apply CCC inference to selected observations.
+
+2. **post-filtering:** apply CCC inference,  
+and filter results based on spatial proximity.
+
+The reason we might choose to take one of these approaches is because CCC 
+modelling frameworks designed for single cell data are typically less complex.
+Consequently, they tend to be more interpretable, easier and faster to run.
+
+### Spatially aware
+
+Here we run `r BiocStyle::Githubpkg("zcang/COMMOT")` [@Cang2023-COMMOT], an 
+optimal transport-based approach that models competition between sender and 
+receiver signals, can account for multimeric interactions, considers cell-cell 
+distances, and is linked to databases of signalling interactions and pathways. 
+
+::: {.callout-note collapse="true" title="other methods"}
+
+- `r BiocStyle::Biocpkg("mistyR")` [@Tanevski2022-MISTy] distinguishes between an 'intrinsic' view to capture how markers within a location influence one another; a 'juxtaview' to model local cellular niche (by relating expression between neighboring cells); and, a 'paraview' to capture tissue structure effects (by relating expression within a given radius).
+
+- `r BiocStyle::Githubpkg("drieslab/Giotto")` [@Chen2023-Giotto] detects increased co-expression of LR pairs in neighboring cells of different types via comparison to randomly shuffled cell locations (permutation test).
+
+- `r BiocStyle::Githubpkg("CellChat")` [@Jin2025-CellChat] quantifies CCC signalling probability between two groups of cells using a simplified mass action-based model, which incorporates core LR interaction with potential multimeric structure and modulation by cofactors.
+
+- `r BiocStyle::Githubpkg("StatBiomed/SpatialDM")` [@Li2023-SpatialDM] uses a bivariate extension of Moran's $I$ [@Moran1950] -- a measure of spatial autocorrelation -- to test LR pairs in close-range distance against independence.
+
+- `r BiocStyle::Githubpkg("zcang/SpaOTsc")` [@Cang2020-SpaOTsc] relies on optimal transport to segregate signal in a spatial region into LRs and their downstream genes, yielding information on regulatory flows between cells. 
+
+:::
+
+We first setup a corresponding Python environment using `basilisk`:
+
+```{r env}
+# initialize 'basilisk' environment
+env <- BasiliskEnvironment(
+    envname="commot", pkgname="PrinciplesSTA", 
+    packages=c("anndata", "pandas"), pip="commot")
+pro <- basiliskStart(env)
+on.exit(basiliskStop(pro))
+```
+
+First, we retrieve ligand-receptor interactions (and a lot more!) from
+[CellChatDB](http://www.cellchat.org/) [@Jin2021-CellChat] using `COMMOT`'s 
+`ligand_receptor_database()` function. This gives us >1,000 interactions, 
+however, the vast majority of genes involved are missing from our data.
+Filtering for those whose partners are fully covered, we are left with few:
+
+```{r CellChat}
+# retrieve LR interaction from CellChatDB &
+# filer for those fully covered by the panel
+db <- basiliskRun(pro, spe=spe, \(spe) {
+    ct <- import("commot")
+    db <- ct$pp$ligand_receptor_database(database="CellChat", species="human")
+    names(db) <- c("ligand", "receptor", "pathway", "type")
+    keep <- apply(db, 1, \(.) {
+        rs <- strsplit(.["receptor"], "_")
+        lr <- c(.["ligand"], unlist(rs))
+        all(lr %in% rownames(spe))
+    })
+    db[keep, ]
 })
+nrow(db)
+```
 
-# setup
-bp <- MulticoreParam(10)
-. <- "~/software/mambaforge/bin/conda"
-options(reticulate.conda_binary=.)
-use_condaenv("commot")
+We then run CCC inference, restricting the analysis to a 4mm$^2$ window.
+`r BiocStyle::Biocpkg("zellkonverter")`'s `SCE2AnnData()` function allows 
+us to convert our `SpatialExperiment` in R to an `AnnData` object in Python.
 
-# loading
-sce <- readRDS(...)
-sce <- logNormCounts(sce, BPPARAM=bp)
+```{r sub}
+# subset data to features being considered
+ss <- strsplit(db$receptor, "_")
+rs <- sapply(ss, .subset, 1)
+sub <- spe[unique(c(db$ligand, rs)), ]
+# assign spatial coordinates to 'spatial' 
+# reduced dimension slot (required by 'COMMOT')
+xy <- spatialCoords(sub)
+reducedDim(sub, "spatial") <- xy
+# subset (4mm)x(4mm) window
+idx <-
+    xy[, 1] >= 1e3 & xy[, 1] <= 5e3 &
+    xy[, 2] >= 1e3 & xy[, 2] <= 5e3
+# number of features x cells left
+dim(sub <- sub[, idx]) 
+```
 
-# wrangling
-xy <- spatialCoords(sce)
-reducedDim(sce, "spatial") <- xy
-
-# run 'COMMOT'
-ad <- import("anndata")
-ct <- import("commot")
-pd <- import("pandas")
-
-# retrieve LR interaction from CellChatDB & filter for 
-# those that are fully covered by the 1k-plex CosMx panel
-db <- ct$pp$ligand_receptor_database(database="CellChat", species="human")
-names(db) <- c("ligand", "receptor", "pathway", "type"); nrow(db)
-db <- db[apply(db, 1, \(.) {
-    rs <- strsplit(.["receptor"], "_")
-    lr <- c(.["ligand"], unlist(rs))
-    all(lr %in% rownames(sce))
-}), ]; nrow(db)
-
-# subset to features being considered
-rs <- sapply(strsplit(db$receptor, "_"), .subset, 1)
-nrow(sce <- sce[unique(c(db$ligand, rs)), ])
-
-is <- split(colnames(sce), sce$fov)
-sr <- bplapply(is, BPPARAM=bp, \(.) { 
-    # skip FoV when there are too few cells
-    if (length(.) < 100) return(NULL) 
-    ad <- SCE2AnnData(sce[, .], X_name="logcounts")
+```{r COMMOT}
+sr <- basiliskRun(pro, spe=sub, db=db, \(spe, db) {
+    # convert 'SpatialExperiment' (R) to 
+    # 'AnnData' (Python) using 'zellkonverter'
+    ad <- SCE2AnnData(sub, X_name="logcounts")
+    # run CCC inference using 'COMMOT'
+    ct <- import("commot")
     ct$tl$spatial_communication(ad,
         database_name="CellChatDB",
-        # average cell is 10x10um; here, we consider 
-        # a distance threshold of 10 cells = 0.1mm
-        dis_thr=0.1,  
+        dis_thr=20,  
         df_ligrec=db,
         heteromeric=TRUE,
         pathway_sum=TRUE,
         heteromeric_rule="min",
         heteromeric_delimiter="_")
-    list(
-        ad$obsm["commot-CellChatDB-sum-sender"], 
-        ad$obsm["commot-CellChatDB-sum-receiver"])
+    # extract list of 'data.frame's containing
+    # sender & receiver CCC signalling estimates
+    sr <- list(
+        s=ad$obsm["commot-CellChatDB-sum-sender"], 
+        r=ad$obsm["commot-CellChatDB-sum-receiver"])
 })
+# add CCC inference results as cell metadata
+for (df in sr) {
+    df <- data.frame(df)
+    colData(sub)[names(df)] <- df
+}
 ```
+
+::: {.callout-note title="distance threshold" collapse="true"}
+
+An important consideration is the distance threshold to impose on CCC inference 
+(argument `dis_thr` in the code chunk below). Ideally, this decision is **based 
+on a biological expectation on cell size and signalling range**. Estimates on 
+the distance over which immune cell signaling can occur, for example, measured 
+interactions on length scales of 80-120$\mu$m [@OylerYaniv2017].
+
+Alternatively, we can arrive at a data-driven estimate by inspecting the 
+distribution of $k$th-NN distances for a sensible $k$ that, in this context, 
+determines the number of cells to consider as potential communication partners:
+
+```{r note-d, fig.width=4, fig.height=2.5}
+#| code-fold: true
+xy <- spatialCoords(spe)
+ns <- RANN::nn2(xy, xy, 11)
+ds <- ns$nn.dists[, 11]
+par(mar=c(4,4,2,0))
+hist(ds, n=200,
+    xlim=c(0, 60), ylim=c(0, 12e3),
+    xlab="10th-NN distance (um)", 
+    ylab="# cells", main="")
+abline(v=d <- median(ds), lw=2, col="red")
+text(d+1, 12e3, adj=c(0,1), round(d, 2), col="red")
+```
+
+:::
+
+## Visualization
+
+### In general
+
+The `r BiocStyle::Biocpkg("CCPlotR")` [@Ennis2023-CCPlotR] package provides a 
+visualization suit for CCC analysis results, including graphs and circos plots.
+
+### In space
+
+Visualizing the above data across the tissue, we will typically observe that 
+expression and signalling values give similar spatial patterns, but the latter 
+will be restricted to where ligand and receptor-expressing cells co-localize.
+
+For simplicity, we pick a single interaction (CXCL12-CXCR4 signalling); 
+here, `s` and `r` correspond to sender and receiver signal, respectively:
+
+```{r plt-xy, message=FALSE, fig.width=11, fig.height=3}
+#| code-fold: true
+sub$in_tissue <- 1
+lapply(c("CXCL12", "s.CXCL12.CXCR4", "r.CXCL12.CXCR4", "CXCR4"), \(.) {
+    plt <- plotSpots(sub, annotate=., assay_name="logcounts")
+    plt$layers[[1]]$aes_params$shape <- 16
+    plt$layers[[1]]$aes_params$size <- 0.1
+    plt + ggtitle(.)
+}) |> 
+    wrap_plots(nrow=1, guides="collect")  &
+    scale_color_gradientn(colors=c("navy", "cyan", "ivory")) &
+    theme(
+        legend.key.height=unit(1, "lines"),
+        legend.key.width=unit(0.5, "lines"), 
+        panel.background=element_rect(fill="black")) 
+```
+
+::: {.callout-note title="CCC vs. expression" collapse="true"}
+
+Let's compare gene expression values with cell-cell signalling estimates:
+
+```{r plt-es, fig.width=6, fig.height=3}
+#| code-fold: true
+ggplot(df, aes(CXCL12, s.CXCL12.CXCR4)) + 
+ggplot(df, aes(CXCR4, r.CXCL12.CXCR4)) + 
+    plot_layout(nrow=1) &
+    geom_point(shape=16, stroke=0, size=0.4) &
+    geom_abline(intercept=0, slope=1, linewidth=0.4, col="red") &
+    coord_equal() & theme_bw() & theme(panel.grid.minor=element_blank())
+```
+
+We can observe that x- and y-values are similar for only a subset of cells.
+A portion of cells expresses CXCL12/CXCR4, but takes on 0 signalling values.
+In between, signalling estimates fall below the corresponding expression values.
+
+This makes sense, knowing that `COMMOT` considers physical cell-cell distances.
+I.e., some cells express CXCL12/CXCR4, but are too distant from cells expressing CXCR4/CXCL12, and are thus deemed to *not* be involved in signalling. 
+Meanwhile, there is a penalty on signalling in proportion to the distance between sender and receiver cells, as well as competition between proximal cells, yielding non-zero but lower-than-expression values.
+
+:::
+
+On a final note, inference is arguably much more complex (and results less straightforward to interpret) when a higher-plex panel is being considered; i.e., when overlapping and multimeric interactions are involved, which did not apply in the example provided here.
+Nevertheless, we hope that readers can appreciate the conceptual difference between expression data and CCC results, and will be able to implement similar `reticulate` approaches to incorporate methods living in Python into their analysis pipelines.
+
+## Appendix
+
+## Benchmarks
+
+- @Liu2022 compare methods developed for CCC analysis 
+of spatially resolved data with non-spatial approaches.
 
 ## References {.unnumbered}
