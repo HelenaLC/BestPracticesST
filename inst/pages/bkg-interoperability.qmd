@@ -189,7 +189,6 @@ Now, we read `spe.h5ad` and visualize features and/or gene expression (e.g. ERBB
 #| message: false
 #| error: false
 #| output: true
-#| label: spatial_scatter
 adata = ad.read_h5ad("spe.h5ad")
 adata.var_names = adata.var['Symbol'].astype(str)
 sq.pl.spatial_scatter(adata,
