@@ -30,7 +30,7 @@ biocViews:
     GeneExpression, 
     Transcriptomics
 Depends: 
-    R (>= 4.3)
+    R (>= 4.5)
 Imports:
     AUCell,
     Banksy,
@@ -106,8 +106,7 @@ Suggests:
     quarto,
     scrapper,
     sessioninfo, 
-    xml2 
-Remotes: 
+    xml2
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 BiocType: Book
