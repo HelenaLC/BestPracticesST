@@ -164,7 +164,7 @@ Apply feature selection methods to identify a set of top highly variable genes (
 
 For more details, see @sec-seq-processing.
 
-For details on alternative feature selection methods to identify spatially variable genes (SVGs) instead of HVGs, for example using the `r BiocStyle::Biocpkg("nnSVG")` [@Weber2023-nnSVG] or other packages, see @sec-crs-spatially-variable.
+For details on alternative feature selection methods to identify spatially variable genes (SVGs) instead of HVGs, for example using the `r BiocStyle::Biocpkg("nnSVG")` [@Weber2023-nnSVG] or other packages; see @sec-crs-svg.
 
 ```{r}
 # remove mitochondrial genes

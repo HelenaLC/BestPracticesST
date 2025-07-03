@@ -291,7 +291,7 @@ k <- cluster_leiden(g, objective_function="modularity", resolution=1.2)
 table(.vhd16$Banksy <- factor(k$membership))
 ```
 
-Next, we can perform differential gene expresison (DGE) analysis to identify markers for each cluster; c.f. @sec-crs-spatially-variable. We also compute the cluster-wise mean expression of selected markers:
+Next, we can perform differential gene expresison (DGE) analysis to identify markers for each cluster; c.f. @sec-crs-deg. We also compute the cluster-wise mean expression of selected markers:
 
 ```{r mgs}
 # differential gene expression analysis

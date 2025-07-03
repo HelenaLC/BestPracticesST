@@ -13,7 +13,7 @@ book:
     - part: "Sequencing-based platforms"
       chapters:
         - pages/seq-introduction.qmd
-        - pages/seq-preprocessing.qmd
+        - pages/seq-reads-to-counts.qmd
         - pages/seq-quality-control.qmd
         - pages/seq-processing.qmd
         - pages/seq-deconvolution.qmd
@@ -33,7 +33,7 @@ book:
       chapters:
         - pages/crs-dimension-reduction.qmd
         - pages/crs-clustering.qmd
-        - pages/crs-spatially-variable.qmd
+        - pages/crs-features.qmd
         - pages/crs-signatures.qmd
         - pages/crs-spat-stat.qmd
     - part: "Cross-platform analyses"

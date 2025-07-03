@@ -128,7 +128,7 @@ curve(fit$trend(x), add = TRUE, lwd = 2, col = "tomato")
 
 Alternatively, spatially-aware methods can be used to identify a set of "spatially variable genes" (SVGs). These methods take the spatial coordinates of the measurements into account, which can generate a more biologically informative ranking of genes associated with biological structure within the tissue area. The set of SVGs may then be used either instead of or complementary to HVGs in subsequent steps.
 
-A number of methods have been developed to identify SVGs. For more details and examples, see @sec-crs-spatially-variable.
+A number of methods have been developed to identify SVGs. For more details and examples, see @sec-crs-svg.
 
 
 ## Dimensionality reduction {#sec-seq-processing-dimred}
@@ -211,7 +211,7 @@ Having clustered our spots to identify spatial domains, we can test for genes th
 
 Here, we will use pairwise t-tests and specifically test for upregulation (as opposed to downregulation), i.e. expression should be higher in the cluster for which a gene is reported to be a marker. See @sec-crs-clustering for additional details.
 
-Alternatively, we could also test for spatially variable genes (SVGs) within domains to identify genes with spatial expression patterns that vary independently of the spatial arrangement of domains. See @sec-crs-spatially-variable for details.
+Alternatively, we could also test for spatially variable genes (SVGs) within domains to identify genes with spatial expression patterns that vary independently of the spatial arrangement of domains; see @sec-crs-svg for details.
 
 ```{r mgs}
 # using scran package

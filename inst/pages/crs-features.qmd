@@ -1,4 +1,4 @@
-# Spatially variable genes {#sec-crs-spatially-variable}
+# Feature selection & testing {#sec-crs-features}
 
 ## Preamble
 
