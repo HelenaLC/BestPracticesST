@@ -1,4 +1,4 @@
-# Preprocessing {#sec-seq-preprocessing}
+# Reads to counts {#sec-seq-reads-to-counts}
 
 ## Background
 
